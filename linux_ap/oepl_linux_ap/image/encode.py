@@ -161,15 +161,18 @@ def _packed_buffer(indices: bytearray, bufw: int, bufh: int, bits: int, params: 
 
 
 def _prepare_header(bufw: int, bufh: int, params: ImageParams, buffer_size: int) -> tuple[bytes, int]:
-    """``prepareHeader``: 6 byte header and the total uncompressed size."""
+    """``prepareHeader``: 6 byte header and the total uncompressed size.
+
+    ``bufw``/``bufh`` are the physical buffer dimensions as returned by
+    ``rotate_for_buffer`` (already swapped for odd ``rotatebuffer``).  The
+    firmware's ``prepareHeader`` receives the unrotated sprite size and swaps
+    the fields itself, so here the values are written as they are.  The web
+    front end decodes G5 with the dimensions from this header.
+    """
     header = bytearray(6)
     header[0] = 6
-    if params.rotatebuffer % 2 == 1:
-        header[3:5] = bufw.to_bytes(2, "little")
-        header[1:3] = bufh.to_bytes(2, "little")
-    else:
-        header[1:3] = bufw.to_bytes(2, "little")
-        header[3:5] = bufh.to_bytes(2, "little")
+    header[1:3] = bufw.to_bytes(2, "little")
+    header[3:5] = bufh.to_bytes(2, "little")
     if params.bpp in (3, 4):
         total = buffer_size * params.bpp + 6
         header[5] = params.bpp
