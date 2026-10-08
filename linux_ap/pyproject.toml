@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "oepl-linux-ap"
+version = "0.1.0"
+description = "OpenEPaperLink access point host for Linux single board computers (NanoPi NEO) driving an ESP32-C6 radio over UART"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = [
+    "aiohttp>=3.9",
+    "pyserial>=3.5",
+    "pyserial-asyncio>=0.6",
+    "Pillow>=10",
+    "requests>=2.31",
+    "qrcode>=7.4",
+    "esptool>=4.7",
+]
+
+[project.optional-dependencies]
+gpio = ["gpiod>=2.1"]
+test = ["pytest>=8", "pytest-asyncio>=0.23"]
+
+[project.scripts]
+oepl-linux-ap = "oepl_linux_ap.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["oepl_linux_ap*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
