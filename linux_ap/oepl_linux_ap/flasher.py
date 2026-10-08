@@ -20,6 +20,7 @@ from typing import TYPE_CHECKING
 
 import requests
 
+from . import leds
 from . import protocol as P
 from .state import ap_type_name
 
@@ -89,6 +90,9 @@ class C6Flasher:
             await serial.resume_after_flashing()
             self.ctx.db.config.run_status = previous_run_status
 
+        if self.ctx.leds is not None:
+            # flasher.cpp: fade to green on success, red on failure
+            self.ctx.leds.add_fade_color(leds.GREEN if result else leds.RED)
         if result:
             self.events.ws_serial("Finished!")
             info = self.ctx.ap_info

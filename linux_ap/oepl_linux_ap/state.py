@@ -21,6 +21,7 @@ from .tagdb import TagDB
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from .content.manager import ContentManager
     from .flasher import C6Flasher
+    from .leds import RgbLed
     from .newproto import NewProto
     from .serialap import SerialAP
     from .udp import UDPSync
@@ -70,6 +71,7 @@ class AppContext:
     content: Optional["ContentManager"] = None
     flasher: Optional["C6Flasher"] = None
     udp: Optional["UDPSync"] = None
+    leds: Optional["RgbLed"] = None
 
     # Set by the main module; invoked by /reboot
     request_shutdown: Any = None

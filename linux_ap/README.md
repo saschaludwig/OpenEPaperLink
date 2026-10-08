@@ -23,7 +23,8 @@ See [docs/wiring.md](docs/wiring.md) for the pin mapping.
 ## Installation (DietPi or Ubuntu/Armbian)
 
 ```sh
-sudo apt install python3 python3-venv python3-dev git gcc libgpiod2 python3-libgpiod
+sudo apt install python3 python3-venv python3-dev git gcc make libgpiod2 python3-libgpiod \
+    python3-pil libffi-dev zlib1g-dev libjpeg-dev libfreetype-dev
 sudo git clone https://github.com/OpenEPaperLink/OpenEPaperLink /opt/OpenEPaperLink
 cd /opt/OpenEPaperLink/linux_ap
 python3 -m venv --system-site-packages .venv
@@ -49,6 +50,11 @@ with `--config`.  Everything the user changes in the web UI is stored in
 * Enable `ttyS1` and `ttyS2` in `dietpi-config` → Advanced Options →
   Serial/UART and disable the login shells on them.
 * DietPi ships without `python3-venv`; the `apt install` line above adds it.
+* The NEO is 32-bit ARM (`armv7l`), for which PyPI has no prebuilt wheels
+  of Pillow, cffi and bitarray.  `python3-pil` supplies Pillow through
+  `--system-site-packages`; cffi and bitarray are compiled by pip, which
+  needs `python3-dev` and `libffi-dev`.  Without `python3-pil` the Pillow
+  build takes several minutes and needs the zlib/jpeg/freetype headers.
 * Time comes from `systemd-timesyncd`; the AP needs a correct clock for the
   content types.  `/set_time` keeps working for isolated networks (requires
   the service to run as root or with `CAP_SYS_TIME`).
@@ -63,6 +69,16 @@ the C6 is put into download mode via the EN/BOOT GPIOs and `esptool`
 over the debug UART (`OEPL_SERIAL_DEBUG_PORT`, default `/dev/ttyS2`).
 With an empty URL the files from `OEPL_C6_BINARIES_DIR` or the uploaded
 staging directory `<data>/c6_staging` are flashed.
+
+### RGB status LED
+
+The WS2812 LED of the Yellow AP is driven through SPI0 MOSI (header pin 19,
+`/dev/spidev0.0`, see `docs/wiring.md`).  It shows the same colours and
+animations as the ESP firmware: a breathing colour per AP state (green when
+online, dark blue while tags are timing out, red when failed), blink patterns
+on radio errors and a green/red fade after a C6 update.  The "RGB LED
+brightness" setting of the web UI applies.  Set `OEPL_RGB_LED_SPI_DEVICE=`
+(empty) to disable the LED when it is not wired.
 
 ### Multiple access points
 
@@ -96,6 +112,7 @@ oepl_linux_ap/
   image/           dithering, bit planes, zlib, Group5
   content/         content types (contentmanager.cpp)
   flasher.py       C6 firmware update via esptool
+  leds.py          WS2812 status LED over SPI
   udp.py           AP-to-AP synchronisation
 native/            optional Group5 encoder shared library (ctypes)
 systemd/           service unit

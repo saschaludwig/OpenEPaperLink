@@ -53,6 +53,12 @@ class Settings:
     gpio_reset_line: int = 203
     gpio_boot_line: int = 6
 
+    # WS2812 status LED of the Yellow AP, driven through SPI MOSI (header
+    # pin 19).  Empty device disables the LED.
+    rgb_led_spi_device: str = "/dev/spidev0.0"
+    rgb_led_speed_hz: int = 2_400_000
+    rgb_led_color_order: str = "GRB"
+
     # Persistent storage root.  Mirrors the LittleFS root of the ESP firmware:
     # <data_dir>/current, <data_dir>/tagtypes, <data_dir>/current/apconfig.json ...
     data_dir: str = "/var/lib/oepl"

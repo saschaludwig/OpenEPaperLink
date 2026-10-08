@@ -16,6 +16,7 @@ from . import __version__
 from .config import Settings, load_settings
 from .content.manager import ContentManager
 from .flasher import C6Flasher
+from .leds import RgbLed
 from .newproto import NewProto
 from .protocol import RUNSTATUS_INIT, RUNSTATUS_RUN, RUNSTATUS_STOP
 from .serialap import SerialAP
@@ -82,6 +83,8 @@ async def run(settings: Settings) -> int:
             pass
 
     # Subsystems
+    ctx.leds = RgbLed(ctx)
+    ctx.leds.set_brightness(ctx.db.config.led)
     ctx.serial = SerialAP(ctx)
     ctx.proto = NewProto(ctx)
     ctx.content = ContentManager(ctx)
@@ -102,6 +105,7 @@ async def run(settings: Settings) -> int:
         loop.create_task(_delayed_start(ctx), name="delayedstart"),
         loop.create_task(ctx.serial.run(), name="serial"),
         loop.create_task(ctx.content.run(), name="content"),
+        loop.create_task(ctx.leds.run(), name="leds"),
     ]
     if ctx.udp is not None:
         tasks.append(loop.create_task(ctx.udp.run(), name="udp"))

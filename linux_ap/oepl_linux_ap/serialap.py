@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING, Optional
 
 from . import protocol as P
 from .gpio import C6Control
+from .leds import RED, STATE_COLORS, YELLOW
 from .state import ESP32_C6, AppContext, ap_type_name
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -140,12 +141,25 @@ class SerialAP:
             self._online_event.set()
         else:
             self._online_event.clear()
+        leds = self.ctx.leds
+        if leds is not None:
+            # ``setAPstate``: breathing colour follows the AP state
+            if state < len(STATE_COLORS):
+                leds.set_idle(STATE_COLORS[state], 767 if is_online else 255)
+            else:
+                leds.set_idle(leds.idle_color, 767 if is_online else 255)
+            if is_online:
+                leds.rgb_idle()
         from .web import build_sysinfo_payload
 
         try:
             self.events.ws_sysinfo(build_sysinfo_payload(self.ctx))
         except Exception:
             log.debug("sysinfo broadcast failed", exc_info=True)
+
+    def _led_pattern(self, color_one, color_two, color_three) -> None:
+        if self.ctx.leds is not None:
+            self.ctx.leds.show_color_pattern(color_one, color_two, color_three)
 
     # ------------------------------------------------------------------
     # Command helpers
@@ -329,6 +343,7 @@ class SerialAP:
                 self.proto.refresh_all_pending()
         else:
             self.events.ws_err("I wasn't able to connect to the AP radio. Did you flash it?")
+            self._led_pattern(RED, YELLOW, RED)
             if self.info.state != P.AP_STATE_FLASHING:
                 self.set_state(False, P.AP_STATE_FAILED)
 
@@ -353,7 +368,9 @@ class SerialAP:
                         if self.proto is not None:
                             self.proto.refresh_all_pending()
                     else:
+                        # tried to reset the AP, but we failed... Maybe the AP-Tag died?
                         self.set_state(False, P.AP_STATE_FAILED)
+                        self._led_pattern(YELLOW, YELLOW, RED)
                         self._last_activity = time.monotonic()
 
     # ------------------------------------------------------------------

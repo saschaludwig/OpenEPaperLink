@@ -18,6 +18,7 @@ from typing import Any
 from aiohttp import WSMsgType, web
 
 from . import __version__
+from . import leds
 from .protocol import (
     AP_STATE_NORADIO,
     AP_STATE_ONLINE,
@@ -249,6 +250,9 @@ def build_sysinfo_payload(ctx: AppContext, force_counts: bool = False) -> dict[s
             db.vars.set("ap_tagcount", f"{tagcount}/{len(db.records)}, {timeoutcount} timeout")
         else:
             db.vars.set("ap_tagcount", f"{tagcount} / {len(db.records)}")
+        # The firmware tints the idle LED dark blue while tags are timing out.
+        if ctx.leds is not None and ctx.ap_info.state == AP_STATE_ONLINE and ctx.ap_info.is_online:
+            ctx.leds.set_idle(leds.DARK_BLUE if timeoutcount > 0 else leds.GREEN)
         state["tagcount_at"] = time.monotonic()
     return payload
 
@@ -483,6 +487,8 @@ async def handle_save_apcfg(request: web.Request) -> web.Response:
     if "env" in form:
         cfg.env = str(form["env"])
     ctx.db.save_config()
+    if ctx.leds is not None:
+        ctx.leds.set_brightness(cfg.led)
     if ctx.proto is not None:
         await ctx.proto.set_ap_channel()
     return _text("Ok, saved")
