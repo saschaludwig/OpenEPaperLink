@@ -452,10 +452,32 @@ class TagDB:
                 os.replace(path, path.with_suffix(".json.bak"))
             except OSError as exc:
                 log.error("error renaming tagDB to .bak: %s", exc)
-        payload = [record.to_json() for record in self.records if record.version == 0]
+        # The ESP firmware wraps every tag in its own single-element array
+        # (``[[{...}],[{...}]]``) because ``saveDB`` serialises one
+        # ``JsonDocument`` per record.  Write the same layout so a database
+        # can be moved between a Linux AP and an ESP32 AP in both directions.
+        payload = [[record.to_json()] for record in self.records if record.version == 0]
         tmp = path.with_suffix(".tmp")
         tmp.write_text(json.dumps(payload, indent=2), encoding="utf-8")
         os.replace(tmp, path)
+
+    @staticmethod
+    def _iter_tag_nodes(payload: Any) -> Iterable[dict[str, Any]]:
+        """Yield tag dictionaries from either supported on-disk layout.
+
+        Accepts the ESP firmware format ``[[{tag}], [{tag}], ...]`` as well as
+        the flat format ``[{tag}, {tag}, ...]`` written by older Linux AP
+        versions.
+        """
+        if not isinstance(payload, list):
+            return
+        for item in payload:
+            if isinstance(item, dict):
+                yield item
+            elif isinstance(item, list):
+                for tag in item:
+                    if isinstance(tag, dict):
+                        yield tag
 
     def load(self, path: Path | None = None) -> bool:
         path = path or self.settings.tagdb_file
@@ -467,11 +489,11 @@ class TagDB:
             log.error("loadDB failed: %s", exc)
             return False
         if not isinstance(payload, list):
+            log.error("loadDB failed: %s does not contain a JSON array", path)
             return False
         now = int(time.time())
-        for tag in payload:
-            if not isinstance(tag, dict):
-                continue
+        loaded = 0
+        for tag in self._iter_tag_nodes(payload):
             try:
                 mac = hex_to_mac(str(tag.get("mac", "")))
             except ValueError:
@@ -481,6 +503,8 @@ class TagDB:
                 record = TagRecord(mac=mac)
                 self.records.append(record)
             record.apply_json(tag, now)
+            loaded += 1
+        log.info("loadDB: %d tag(s) loaded from %s", loaded, path)
         return True
 
     def save_config(self) -> None:

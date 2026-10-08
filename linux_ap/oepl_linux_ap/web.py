@@ -695,7 +695,10 @@ async def handle_restore_db(request: web.Request) -> web.Response:
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_bytes(data)
     ctx.db.records.clear()
-    ctx.db.load(target)
+    if not ctx.db.load(target):
+        ctx.events.log_line("restore tagDB failed: file is not a valid tagDB.json")
+        return _text("restore failed: not a valid tagDB.json", 400)
+    ctx.events.log_line(f"restore tagDB: {len(ctx.db.records)} tag(s) restored")
     return _text("Ok, restored.")
 
 
